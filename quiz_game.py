@@ -3,6 +3,9 @@
 # 타입 힌트(list[str], int | None 등)를 실행 시점에 계산하지 않게 해서 Python 3.8·3.9에서도 시작 오류가 나지 않게 한다.
 from __future__ import annotations
 
+from default_quizzes import get_default_quizzes
+from quiz import Quiz
+
 LINE = "=" * 40
 
 
@@ -45,7 +48,7 @@ class QuizGame:
     EXIT_CHOICE = len(MENU_ITEMS)
 
     def __init__(self):
-        self.quizzes = []
+        self.quizzes: list[Quiz] = get_default_quizzes()
         self.best_score: int | None = None  # 아직 풀지 않았으면 None
 
     def run(self) -> None:
@@ -63,6 +66,7 @@ class QuizGame:
         print(LINE)
         print("        🎯 나만의 퀴즈 게임 🎯")
         print(LINE)
+        print(f"📚 퀴즈 {len(self.quizzes)}개가 준비되어 있습니다.")
 
     def show_menu(self) -> None:
         print(LINE)
