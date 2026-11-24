@@ -61,7 +61,8 @@ class QuizGame:
 
     def __init__(self):
         self.quizzes: list[Quiz] = get_default_quizzes()
-        self.best_score: int | None = None  # 아직 풀지 않았으면 None
+        self.best_score: int | None = None     # 아직 풀지 않았으면 None
+        self.best_detail: dict | None = None   # 최고 점수를 받은 판의 정답 수/문제 수
 
     def run(self) -> None:
         """프로그램의 메인 루프. 종료를 고를 때까지 메뉴를 반복한다."""
@@ -97,8 +98,8 @@ class QuizGame:
             self.add_quiz()
         elif choice == 3:
             self.list_quizzes()
-        else:
-            print(f"\n🚧 '{self.MENU_ITEMS[choice - 1]}' 기능은 준비 중입니다.")
+        elif choice == 4:
+            self.show_score()
         print()
 
     def exit_game(self) -> None:
@@ -127,7 +128,8 @@ class QuizGame:
                 print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice_text()}'입니다.")
 
         score = self.calculate_score(correct, total)
-        self.show_result(score, correct, total)
+        is_new_best = self.update_best_score(score, correct, total)
+        self.show_result(score, correct, total, is_new_best)
 
     def ask_question_count(self) -> int:
         """풀 문제 수를 고른다. 퀴즈가 1개뿐이면 묻지 않는다."""
@@ -142,11 +144,47 @@ class QuizGame:
         """100점 만점으로 환산한다. (반올림)"""
         return int(points / total * 100 + 0.5)
 
-    def show_result(self, score: int, correct: int, total: int) -> None:
+    def show_result(self, score: int, correct: int, total: int, is_new_best: bool) -> None:
         print()
         print(LINE)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
+        if is_new_best:
+            print("🎉 새로운 최고 점수입니다!")
+        else:
+            print(f"현재 최고 점수: {self.best_score}점")
         print(LINE)
+
+    def update_best_score(self, score: int, correct: int, total: int) -> bool:
+        """최고 점수와 비교해서 더 좋은 기록이면 갱신한다. 갱신했으면 True.
+
+        점수가 같으면 더 많은 문제를 푼 기록을 더 좋은 기록으로 본다.
+        (1문제만 풀어 받은 100점이 9문제를 풀어 받은 100점보다 앞서지 않도록)
+        """
+        if self.best_score is None:
+            is_better = True
+        elif score != self.best_score:
+            is_better = score > self.best_score
+        else:
+            best_total = self.best_detail.get("total", 0) if self.best_detail else 0
+            is_better = total > best_total
+
+        if is_better:
+            self.best_score = score
+            self.best_detail = {"correct": correct, "total": total}
+        return is_better
+
+    def show_score(self) -> None:
+        """최고 점수를 보여 준다."""
+        if self.best_score is None:
+            print("\n📭 아직 퀴즈를 푼 기록이 없습니다. '퀴즈 풀기'로 도전해 보세요!")
+            return
+
+        if self.best_detail:
+            detail = self.best_detail
+            print(f"\n🏆 최고 점수: {self.best_score}점 "
+                  f"({detail['total']}문제 중 {detail['correct']}문제 정답)")
+        else:
+            print(f"\n🏆 최고 점수: {self.best_score}점")
 
     def add_quiz(self) -> None:
         """문제, 선택지 4개, 정답 번호를 입력받아 새 퀴즈를 등록한다."""
