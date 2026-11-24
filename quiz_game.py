@@ -3,10 +3,13 @@
 # 타입 힌트(list[str], int | None 등)를 실행 시점에 계산하지 않게 해서 Python 3.8·3.9에서도 시작 오류가 나지 않게 한다.
 from __future__ import annotations
 
+import random
+
 from default_quizzes import get_default_quizzes
 from quiz import Quiz
 
 LINE = "=" * 40
+THIN_LINE = "-" * 40
 
 
 def read_line(prompt: str) -> str:
@@ -79,7 +82,55 @@ class QuizGame:
 
     def handle_choice(self, choice: int) -> None:
         """메뉴 번호에 맞는 기능을 실행한다."""
-        print(f"\n🚧 '{self.MENU_ITEMS[choice - 1]}' 기능은 준비 중입니다.\n")
+        if choice == 1:
+            self.play_quiz()
+        else:
+            print(f"\n🚧 '{self.MENU_ITEMS[choice - 1]}' 기능은 준비 중입니다.")
+        print()
 
     def exit_game(self) -> None:
         print("👋 프로그램을 종료합니다. 다음에 또 만나요!")
+
+    def play_quiz(self) -> None:
+        """고른 문제 수만큼 랜덤 순서로 출제하고 결과를 보여 준다."""
+        if not self.quizzes:
+            print("\n⚠️ 등록된 퀴즈가 없습니다. 먼저 '퀴즈 추가'로 퀴즈를 등록해 주세요.")
+            return
+
+        total = self.ask_question_count()
+        selected = random.sample(self.quizzes, total)  # 랜덤 순서로 total개 뽑기
+        print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
+
+        correct = 0
+        for number, quiz in enumerate(selected, start=1):
+            print()
+            print(THIN_LINE)
+            quiz.display(number)
+            answer = ask_int(f"정답 입력 (1-{Quiz.CHOICE_COUNT}): ", 1, Quiz.CHOICE_COUNT)
+            if quiz.is_correct(answer):
+                correct += 1
+                print("✅ 정답입니다!")
+            else:
+                print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice_text()}'입니다.")
+
+        score = self.calculate_score(correct, total)
+        self.show_result(score, correct, total)
+
+    def ask_question_count(self) -> int:
+        """풀 문제 수를 고른다. 퀴즈가 1개뿐이면 묻지 않는다."""
+        total = len(self.quizzes)
+        if total == 1:
+            return 1
+        print()
+        return ask_int(f"몇 문제를 풀까요? (1-{total}): ", 1, total)
+
+    @staticmethod
+    def calculate_score(points: float, total: int) -> int:
+        """100점 만점으로 환산한다. (반올림)"""
+        return int(points / total * 100 + 0.5)
+
+    def show_result(self, score: int, correct: int, total: int) -> None:
+        print()
+        print(LINE)
+        print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
+        print(LINE)
