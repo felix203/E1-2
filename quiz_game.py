@@ -1,4 +1,4 @@
-"""게임 전체를 관리하는 QuizGame 클래스."""
+"""게임 전체(메뉴, 퀴즈 풀기/추가/목록, 점수)를 관리하는 QuizGame 클래스."""
 
 # 타입 힌트(list[str], int | None 등)를 실행 시점에 계산하지 않게 해서 Python 3.8·3.9에서도 시작 오류가 나지 않게 한다.
 from __future__ import annotations
@@ -6,51 +6,11 @@ from __future__ import annotations
 import random
 
 from default_quizzes import get_default_quizzes
+from input_utils import ask_int, ask_text
 from quiz import Quiz
 
 LINE = "=" * 40
 THIN_LINE = "-" * 40
-
-
-def read_line(prompt: str) -> str:
-    """한 줄을 입력받아 앞뒤 공백을 제거해서 돌려준다."""
-    return input(prompt).strip()
-
-
-def parse_int(text: str, minimum: int, maximum: int) -> int | None:
-    """공백이 제거된 text를 minimum~maximum 범위의 정수로 바꾼다.
-
-    빈 입력 / 숫자가 아님 / 범위 밖이면 안내 메시지를 출력하고 None을 돌려준다.
-    """
-    if not text:
-        print(f"⚠️ 입력이 비어 있습니다. {minimum}-{maximum} 사이의 숫자를 입력하세요.")
-        return None
-    try:
-        number = int(text)
-    except ValueError:
-        print(f"⚠️ 잘못된 입력입니다. {minimum}-{maximum} 사이의 숫자를 입력하세요.")
-        return None
-    if not minimum <= number <= maximum:
-        print(f"⚠️ 잘못된 입력입니다. {minimum}-{maximum} 사이의 숫자를 입력하세요.")
-        return None
-    return number
-
-
-def ask_int(prompt: str, minimum: int, maximum: int) -> int:
-    """minimum~maximum 범위의 정수를 올바르게 입력할 때까지 반복해서 묻는다."""
-    while True:
-        number = parse_int(read_line(prompt), minimum, maximum)
-        if number is not None:
-            return number
-
-
-def ask_text(prompt: str, allow_empty: bool = False) -> str:
-    """문자열을 입력받는다. allow_empty가 False면 빈 입력을 다시 묻는다."""
-    while True:
-        text = read_line(prompt)
-        if text or allow_empty:
-            return text
-        print("⚠️ 입력이 비어 있습니다. 내용을 입력하세요.")
 
 
 class QuizGame:
@@ -64,6 +24,9 @@ class QuizGame:
         self.best_score: int | None = None     # 아직 풀지 않았으면 None
         self.best_detail: dict | None = None   # 최고 점수를 받은 판의 정답 수/문제 수
 
+    # ------------------------------------------------------------------
+    # 실행 / 메뉴
+    # ------------------------------------------------------------------
     def run(self) -> None:
         """프로그램의 메인 루프. 종료를 고를 때까지 메뉴를 반복한다."""
         self.print_header()
@@ -105,6 +68,9 @@ class QuizGame:
     def exit_game(self) -> None:
         print("👋 프로그램을 종료합니다. 다음에 또 만나요!")
 
+    # ------------------------------------------------------------------
+    # 퀴즈 풀기
+    # ------------------------------------------------------------------
     def play_quiz(self) -> None:
         """고른 문제 수만큼 랜덤 순서로 출제하고 결과를 보여 준다."""
         if not self.quizzes:
@@ -154,6 +120,9 @@ class QuizGame:
             print(f"현재 최고 점수: {self.best_score}점")
         print(LINE)
 
+    # ------------------------------------------------------------------
+    # 점수
+    # ------------------------------------------------------------------
     def update_best_score(self, score: int, correct: int, total: int) -> bool:
         """최고 점수와 비교해서 더 좋은 기록이면 갱신한다. 갱신했으면 True.
 
@@ -186,6 +155,9 @@ class QuizGame:
         else:
             print(f"\n🏆 최고 점수: {self.best_score}점")
 
+    # ------------------------------------------------------------------
+    # 퀴즈 추가 / 목록
+    # ------------------------------------------------------------------
     def add_quiz(self) -> None:
         """문제, 선택지 4개, 정답 번호를 입력받아 새 퀴즈를 등록한다."""
         print("\n📌 새로운 퀴즈를 추가합니다.\n")
