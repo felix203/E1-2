@@ -18,8 +18,12 @@ def setup_console_encoding() -> None:
 
 def main() -> None:
     setup_console_encoding()
-    game = QuizGame()
-    game.run()
+    try:
+        game = QuizGame()
+        game.run()
+    except KeyboardInterrupt:
+        # 종료 안내를 출력하는 도중 Ctrl+C를 한 번 더 누른 경우까지 대비
+        print("\n프로그램을 종료합니다.")
 
 
 if __name__ == "__main__":

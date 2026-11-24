@@ -38,13 +38,23 @@ class QuizGame:
     def run(self) -> None:
         """프로그램의 메인 루프. 종료를 고를 때까지 메뉴를 반복한다."""
         self.print_header()
-        while True:
-            self.show_menu()
-            choice = self.select_menu()
-            if choice == self.EXIT_CHOICE:
-                self.exit_game()
-                break
-            self.handle_choice(choice)
+        try:
+            while True:
+                self.show_menu()
+                choice = self.select_menu()
+                if choice == self.EXIT_CHOICE:
+                    self.exit_game()
+                    break
+                self.handle_choice(choice)
+        except (KeyboardInterrupt, EOFError) as error:
+            # 어디서 입력을 받던 중이든 Ctrl+C / 입력 종료는 여기서 처리한다.
+            if isinstance(error, KeyboardInterrupt):
+                reason = "Ctrl+C 입력이 감지되어"
+            else:
+                reason = "입력이 종료되어"
+            print(f"\n\n⚠️ {reason} 프로그램을 안전하게 종료합니다.")
+            if self.save_state():
+                print("💾 현재까지의 데이터를 저장했습니다.")
 
     def print_header(self) -> None:
         print(LINE)
