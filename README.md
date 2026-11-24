@@ -178,5 +178,7 @@ python main.py        # macOS/Linux에서는 python3 main.py
 2. 복제한 폴더에서 README에 한 줄 추가 → `commit` → `push`
 3. 원래 작업 폴더에서 `git pull`로 변경 사항을 가져와 반영 확인
 
+- 실습 완료: 이 줄은 복제한 폴더(`quiz-game-clone`)에서 추가해 push했고, 원래 작업 폴더에서 `git pull`로 받았습니다.
+
 ![clone과 pull 실행 결과](docs/screenshots/clone_pull.png)
 
