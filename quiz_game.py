@@ -9,7 +9,7 @@ import random
 from pathlib import Path
 
 from default_quizzes import get_default_quizzes
-from input_utils import ask_int, ask_text
+from input_utils import ask_int, ask_text, parse_int, read_line
 from quiz import Quiz
 
 # 실행 위치와 상관없이 항상 프로젝트 루트(이 파일이 있는 폴더)의 state.json을 사용한다.
@@ -17,6 +17,7 @@ STATE_PATH = Path(__file__).resolve().parent / "state.json"
 
 LINE = "=" * 40
 THIN_LINE = "-" * 40
+HINT_CREDIT = 0.5  # 힌트를 보고 맞히면 1문제의 절반만 인정
 
 
 class QuizGame:
@@ -29,7 +30,7 @@ class QuizGame:
         self.state_path = Path(state_path)
         self.quizzes: list[Quiz] = []
         self.best_score: int | None = None     # 아직 풀지 않았으면 None
-        self.best_detail: dict | None = None   # 최고 점수를 받은 판의 정답 수/문제 수
+        self.best_detail: dict | None = None   # 최고 점수를 받은 판의 정답 수/문제 수/힌트 수
         self.load_message = self.load_state()  # 시작할 때 저장된 데이터를 불러온다
 
     # ------------------------------------------------------------------
@@ -100,22 +101,30 @@ class QuizGame:
         total = self.ask_question_count()
         selected = random.sample(self.quizzes, total)  # 랜덤 순서로 total개 뽑기
         print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
+        if any(quiz.has_hint() for quiz in selected):
+            print("💡 힌트가 있는 문제는 h를 입력해 힌트를 볼 수 있어요. (힌트 사용 후 정답이면 0.5문제로 인정)")
 
         correct = 0
+        hints_used = 0
+        points = 0.0
         for number, quiz in enumerate(selected, start=1):
             print()
             print(THIN_LINE)
             quiz.display(number)
-            answer = ask_int(f"정답 입력 (1-{Quiz.CHOICE_COUNT}): ", 1, Quiz.CHOICE_COUNT)
+            answer, used_hint = self.ask_answer(quiz)
+            if used_hint:
+                hints_used += 1
+
             if quiz.is_correct(answer):
                 correct += 1
-                print("✅ 정답입니다!")
+                points += HINT_CREDIT if used_hint else 1
+                print("✅ 정답입니다!" + (" (힌트 사용으로 0.5문제 인정)" if used_hint else ""))
             else:
                 print(f"❌ 오답입니다. 정답은 {quiz.answer}번 '{quiz.correct_choice_text()}'입니다.")
 
-        score = self.calculate_score(correct, total)
-        is_new_best = self.update_best_score(score, correct, total)
-        self.show_result(score, correct, total, is_new_best)
+        score = self.calculate_score(points, total)
+        is_new_best = self.update_best_score(score, correct, total, hints_used)
+        self.show_result(score, correct, total, hints_used, is_new_best)
         self.save_state()
 
     def ask_question_count(self) -> int:
@@ -126,15 +135,45 @@ class QuizGame:
         print()
         return ask_int(f"몇 문제를 풀까요? (1-{total}): ", 1, total)
 
+    def ask_answer(self, quiz: Quiz) -> tuple[int, bool]:
+        """정답 번호를 입력받는다. h를 입력하면 힌트를 보여 준다.
+
+        반환값: (입력한 번호, 힌트 사용 여부)
+        """
+        used_hint = False
+        max_choice = Quiz.CHOICE_COUNT
+        if quiz.has_hint():
+            prompt = f"정답 입력 (1-{max_choice}, 힌트 h): "
+        else:
+            prompt = f"정답 입력 (1-{max_choice}): "
+
+        while True:
+            text = read_line(prompt)
+            if text.lower() == "h":
+                if not quiz.has_hint():
+                    print("💡 이 문제에는 힌트가 없습니다.")
+                elif used_hint:
+                    print(f"💡 (다시 보기) 힌트: {quiz.hint}")
+                else:
+                    used_hint = True
+                    print(f"💡 힌트: {quiz.hint}")
+                continue
+
+            number = parse_int(text, 1, max_choice)
+            if number is not None:
+                return number, used_hint
+
     @staticmethod
     def calculate_score(points: float, total: int) -> int:
         """100점 만점으로 환산한다. (반올림)"""
         return int(points / total * 100 + 0.5)
 
-    def show_result(self, score: int, correct: int, total: int, is_new_best: bool) -> None:
+    def show_result(self, score: int, correct: int, total: int, hints_used: int, is_new_best: bool) -> None:
         print()
         print(LINE)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
+        if hints_used:
+            print(f"💡 힌트 사용: {hints_used}회")
         if is_new_best:
             print("🎉 새로운 최고 점수입니다!")
         else:
@@ -144,7 +183,7 @@ class QuizGame:
     # ------------------------------------------------------------------
     # 점수
     # ------------------------------------------------------------------
-    def update_best_score(self, score: int, correct: int, total: int) -> bool:
+    def update_best_score(self, score: int, correct: int, total: int, hints_used: int) -> bool:
         """최고 점수와 비교해서 더 좋은 기록이면 갱신한다. 갱신했으면 True.
 
         점수가 같으면 더 많은 문제를 푼 기록을 더 좋은 기록으로 본다.
@@ -160,7 +199,7 @@ class QuizGame:
 
         if is_better:
             self.best_score = score
-            self.best_detail = {"correct": correct, "total": total}
+            self.best_detail = {"correct": correct, "total": total, "hints_used": hints_used}
         return is_better
 
     def show_score(self) -> None:
@@ -171,8 +210,10 @@ class QuizGame:
 
         if self.best_detail:
             detail = self.best_detail
+            hints = detail.get("hints_used", 0)
+            hint_text = f", 힌트 {hints}회" if hints else ""
             print(f"\n🏆 최고 점수: {self.best_score}점 "
-                  f"({detail['total']}문제 중 {detail['correct']}문제 정답)")
+                  f"({detail['total']}문제 중 {detail['correct']}문제 정답{hint_text})")
         else:
             print(f"\n🏆 최고 점수: {self.best_score}점")
 
@@ -180,7 +221,7 @@ class QuizGame:
     # 퀴즈 추가 / 목록
     # ------------------------------------------------------------------
     def add_quiz(self) -> None:
-        """문제, 선택지 4개, 정답 번호를 입력받아 새 퀴즈를 등록한다."""
+        """문제, 선택지 4개, 정답 번호, 힌트(선택)를 입력받아 새 퀴즈를 등록한다."""
         print("\n📌 새로운 퀴즈를 추가합니다.\n")
         question = ask_text("문제를 입력하세요: ")
 
@@ -195,8 +236,9 @@ class QuizGame:
                 break
 
         answer = ask_int(f"정답 번호 (1-{Quiz.CHOICE_COUNT}): ", 1, Quiz.CHOICE_COUNT)
+        hint = ask_text("힌트 (없으면 그냥 Enter): ", allow_empty=True)
 
-        self.quizzes.append(Quiz(question, choices, answer))
+        self.quizzes.append(Quiz(question, choices, answer, hint))
         if self.save_state():
             print(f"\n✅ 퀴즈가 추가되었습니다! (총 {len(self.quizzes)}개)")
         else:
