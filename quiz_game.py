@@ -1,4 +1,4 @@
-"""게임 전체(메뉴, 퀴즈 풀기/추가/목록, 점수, 저장)를 관리하는 QuizGame 클래스."""
+"""게임 전체(메뉴, 퀴즈 풀기/추가/목록/삭제, 점수, 저장)를 관리하는 QuizGame 클래스."""
 
 # 타입 힌트(list[str], int | None 등)를 실행 시점에 계산하지 않게 해서 Python 3.8·3.9에서도 시작 오류가 나지 않게 한다.
 from __future__ import annotations
@@ -9,7 +9,7 @@ import random
 from pathlib import Path
 
 from default_quizzes import get_default_quizzes
-from input_utils import ask_int, ask_text, parse_int, read_line
+from input_utils import ask_int, ask_text, ask_yes_no, parse_int, read_line
 from quiz import Quiz
 
 # 실행 위치와 상관없이 항상 프로젝트 루트(이 파일이 있는 폴더)의 state.json을 사용한다.
@@ -23,7 +23,7 @@ HINT_CREDIT = 0.5  # 힌트를 보고 맞히면 1문제의 절반만 인정
 class QuizGame:
     """퀴즈 목록과 최고 점수를 가지고 게임 전체를 진행한다."""
 
-    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "종료")
+    MENU_ITEMS = ("퀴즈 풀기", "퀴즈 추가", "퀴즈 목록", "점수 확인", "퀴즈 삭제", "종료")
     EXIT_CHOICE = len(MENU_ITEMS)
 
     def __init__(self, state_path: Path = STATE_PATH):
@@ -82,6 +82,8 @@ class QuizGame:
             self.list_quizzes()
         elif choice == 4:
             self.show_score()
+        elif choice == 5:
+            self.delete_quiz()
         print()
 
     def exit_game(self) -> None:
@@ -218,7 +220,7 @@ class QuizGame:
             print(f"\n🏆 최고 점수: {self.best_score}점")
 
     # ------------------------------------------------------------------
-    # 퀴즈 추가 / 목록
+    # 퀴즈 추가 / 목록 / 삭제
     # ------------------------------------------------------------------
     def add_quiz(self) -> None:
         """문제, 선택지 4개, 정답 번호, 힌트(선택)를 입력받아 새 퀴즈를 등록한다."""
@@ -255,6 +257,30 @@ class QuizGame:
         for number, quiz in enumerate(self.quizzes, start=1):
             print(f"[{number}] {quiz.question}")
         print(THIN_LINE)
+
+    def delete_quiz(self) -> None:
+        """번호로 퀴즈를 골라 확인을 받은 뒤 삭제하고 파일에 반영한다."""
+        if not self.quizzes:
+            print("\n⚠️ 삭제할 퀴즈가 없습니다.")
+            return
+
+        self.list_quizzes()
+        total = len(self.quizzes)
+        number = ask_int(f"삭제할 퀴즈 번호 (1-{total}, 취소 0): ", 0, total)
+        if number == 0:
+            print("↩️ 삭제를 취소했습니다.")
+            return
+
+        target = self.quizzes[number - 1]
+        if not ask_yes_no(f"'{target.question}' 퀴즈를 삭제할까요? (y/n): "):
+            print("↩️ 삭제를 취소했습니다.")
+            return
+
+        self.quizzes.pop(number - 1)
+        if self.save_state():
+            print(f"🗑️ 퀴즈를 삭제했습니다. (남은 퀴즈 {len(self.quizzes)}개)")
+        else:
+            print("⚠️ 퀴즈는 삭제했지만 파일에 저장하지 못했습니다.")
 
     # ------------------------------------------------------------------
     # 파일 저장 / 불러오기 (state.json)

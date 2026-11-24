@@ -50,3 +50,14 @@ def ask_text(prompt: str, allow_empty: bool = False) -> str:
         if text or allow_empty:
             return text
         print("⚠️ 입력이 비어 있습니다. 내용을 입력하세요.")
+
+
+def ask_yes_no(prompt: str) -> bool:
+    """y/n 질문. y면 True, n이면 False."""
+    while True:
+        text = read_line(prompt).lower()
+        if text in ("y", "yes", "예", "ㅇ"):
+            return True
+        if text in ("n", "no", "아니오", "ㄴ"):
+            return False
+        print("⚠️ y 또는 n을 입력하세요.")
