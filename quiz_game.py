@@ -3,6 +3,8 @@
 # 타입 힌트(list[str], int | None 등)를 실행 시점에 계산하지 않게 해서 Python 3.8·3.9에서도 시작 오류가 나지 않게 한다.
 from __future__ import annotations
 
+import random
+
 from default_quizzes import get_default_quizzes
 from quiz import Quiz
 
@@ -90,16 +92,17 @@ class QuizGame:
         print("👋 프로그램을 종료합니다. 다음에 또 만나요!")
 
     def play_quiz(self) -> None:
-        """저장된 퀴즈를 차례대로 출제하고 결과를 보여 준다."""
+        """고른 문제 수만큼 랜덤 순서로 출제하고 결과를 보여 준다."""
         if not self.quizzes:
             print("\n⚠️ 등록된 퀴즈가 없습니다. 먼저 '퀴즈 추가'로 퀴즈를 등록해 주세요.")
             return
 
-        total = len(self.quizzes)
+        total = self.ask_question_count()
+        selected = random.sample(self.quizzes, total)  # 랜덤 순서로 total개 뽑기
         print(f"\n📝 퀴즈를 시작합니다! (총 {total}문제)")
 
         correct = 0
-        for number, quiz in enumerate(self.quizzes, start=1):
+        for number, quiz in enumerate(selected, start=1):
             print()
             print(THIN_LINE)
             quiz.display(number)
@@ -112,6 +115,14 @@ class QuizGame:
 
         score = self.calculate_score(correct, total)
         self.show_result(score, correct, total)
+
+    def ask_question_count(self) -> int:
+        """풀 문제 수를 고른다. 퀴즈가 1개뿐이면 묻지 않는다."""
+        total = len(self.quizzes)
+        if total == 1:
+            return 1
+        print()
+        return ask_int(f"몇 문제를 풀까요? (1-{total}): ", 1, total)
 
     @staticmethod
     def calculate_score(points: float, total: int) -> int:
