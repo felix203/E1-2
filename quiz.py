@@ -44,3 +44,28 @@ class Quiz:
     def correct_choice_text(self) -> str:
         """정답 번호에 해당하는 선택지 문구."""
         return self.choices[self.answer - 1]
+
+    def to_dict(self) -> dict:
+        """JSON으로 저장할 수 있도록 딕셔너리로 바꾼다."""
+        return {
+            "question": self.question,
+            "choices": self.choices,
+            "answer": self.answer,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Quiz":
+        """state.json에서 읽은 딕셔너리로 Quiz 객체를 만든다.
+
+        형식이 맞지 않으면 ValueError를 일으킨다.
+        """
+        if not isinstance(data, dict):
+            raise ValueError("퀴즈 데이터는 딕셔너리여야 합니다.")
+        try:
+            return cls(
+                question=data["question"],
+                choices=data["choices"],
+                answer=data["answer"],
+            )
+        except KeyError as error:
+            raise ValueError(f"필수 항목이 없습니다: {error}") from error
