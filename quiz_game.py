@@ -44,6 +44,15 @@ def ask_int(prompt: str, minimum: int, maximum: int) -> int:
             return number
 
 
+def ask_text(prompt: str, allow_empty: bool = False) -> str:
+    """문자열을 입력받는다. allow_empty가 False면 빈 입력을 다시 묻는다."""
+    while True:
+        text = read_line(prompt)
+        if text or allow_empty:
+            return text
+        print("⚠️ 입력이 비어 있습니다. 내용을 입력하세요.")
+
+
 class QuizGame:
     """퀴즈 목록과 최고 점수를 가지고 게임 전체를 진행한다."""
 
@@ -84,6 +93,8 @@ class QuizGame:
         """메뉴 번호에 맞는 기능을 실행한다."""
         if choice == 1:
             self.play_quiz()
+        elif choice == 2:
+            self.add_quiz()
         else:
             print(f"\n🚧 '{self.MENU_ITEMS[choice - 1]}' 기능은 준비 중입니다.")
         print()
@@ -134,3 +145,23 @@ class QuizGame:
         print(LINE)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
         print(LINE)
+
+    def add_quiz(self) -> None:
+        """문제, 선택지 4개, 정답 번호를 입력받아 새 퀴즈를 등록한다."""
+        print("\n📌 새로운 퀴즈를 추가합니다.\n")
+        question = ask_text("문제를 입력하세요: ")
+
+        choices: list[str] = []
+        for number in range(1, Quiz.CHOICE_COUNT + 1):
+            while True:
+                choice = ask_text(f"선택지 {number}: ")
+                if choice in choices:
+                    print("⚠️ 이미 입력한 선택지입니다. 다른 내용을 입력하세요.")
+                    continue
+                choices.append(choice)
+                break
+
+        answer = ask_int(f"정답 번호 (1-{Quiz.CHOICE_COUNT}): ", 1, Quiz.CHOICE_COUNT)
+
+        self.quizzes.append(Quiz(question, choices, answer))
+        print(f"\n✅ 퀴즈가 추가되었습니다! (총 {len(self.quizzes)}개)")
