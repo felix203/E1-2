@@ -139,10 +139,13 @@ python main.py        # macOS/Linux에서는 python3 main.py
 
 | 항목 | 내용 |
 | --- | --- |
-| Python | 3.10 이상 (3.8 · 3.10 · 3.13에서 실행 확인) |
+| Python | 3.10 이상 (개발 PC: 3.10.6 / 실행 확인: 3.8 · 3.10 · 3.13) |
+| Git | 2.56.1 (Git for Windows) |
 | 라이브러리 | 표준 라이브러리만 사용 (`json`, `os`, `random`, `datetime`, `pathlib`, `sys`) |
 | OS | Windows · macOS · Linux 터미널 (Windows Git Bash처럼 출력 인코딩이 cp949인 환경도 지원) |
 | 에디터 | VSCode |
+
+![개발 환경: VSCode 터미널에서 Python·Git 버전과 git 설정 확인](docs/screenshots/dev_env.png)
 
 ## 실행 화면
 
