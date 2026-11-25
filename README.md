@@ -135,6 +135,71 @@ python main.py        # macOS/Linux에서는 python3 main.py
 }
 ```
 
+## 설계 설명
+
+### 클래스와 모듈별 책임
+
+| 클래스 / 모듈 | 책임 | 주요 메서드 |
+| --- | --- | --- |
+| `Quiz` (`quiz.py`) | 문제 1개의 데이터와 그 데이터를 다루는 동작 | `display()` 출력, `is_correct()` 정답 확인, `has_hint()`, `to_dict()` / `from_dict()` 저장 형식 변환 |
+| `QuizGame` (`quiz_game.py`) | 게임 진행, 상태(퀴즈 목록·최고 점수·기록) 관리, 저장 | `run()`, `show_menu()`, `play_quiz()`, `add_quiz()`, `list_quizzes()`, `delete_quiz()`, `show_score()`, `load_state()`, `save_state()` |
+| `input_utils.py` (함수 모음) | 사용자 입력 검증 | `parse_int()`, `ask_int()`, `ask_text()`, `ask_yes_no()` |
+| `default_quizzes.py` | 기본 퀴즈 데이터 | `get_default_quizzes()` → `Quiz` 9개 |
+
+### 클래스를 사용한 이유 (함수만 쓸 때와 비교)
+
+- **캡슐화**: 문제·선택지·정답과, 이것을 다루는 동작(출력, 정답 확인, 저장 형식 변환)을 `Quiz` 하나에 묶었습니다. 퀴즈를 dict로만 다루면 여러 함수가 `quiz["answer"]` 같은 키를 직접 꺼내 써야 하고 키 오타는 실행 중에야 드러나지만, `quiz.is_correct(2)`처럼 메서드로 쓰면 규칙이 한 곳에 모입니다.
+- **상태 관리**: 퀴즈 목록, 최고 점수, 게임 기록은 거의 모든 기능이 함께 쓰는 상태입니다. 함수만 쓰면 전역 변수로 두거나 모든 함수에 매개변수로 넘겨야 하는데, `QuizGame`의 속성(`self.quizzes`, `self.best_score`, `self.history`)으로 두면 메서드끼리 자연스럽게 공유하고, 무엇을 저장해야 하는지도 분명해집니다.
+- **확장과 재사용**: 힌트 기능은 `Quiz`에 `hint` 속성과 `has_hint()`만 더해서 추가했습니다. 저장 파일 경로도 `QuizGame(state_path=...)`로 바꿔 넣을 수 있어, 테스트할 때 실제 데이터를 건드리지 않고 다른 파일을 쓸 수 있습니다.
+- **단점**: 이 정도 크기는 함수만으로도 만들 수 있고, 클래스를 쓰면 `__init__`·`self` 같은 개념과 코드 양이 늘어납니다. 그래서 상태가 필요 없는 입력 검증은 클래스로 만들지 않고 `input_utils.py`의 함수로 두었습니다.
+
+### 입력 검증과 저장(IO)을 나눈 기준
+
+서로 다른 이유로 바뀌는 코드를 다른 곳에 두었습니다(단일 책임 원칙). 입력 규칙(허용 범위, 안내 문구)이 바뀌면 `input_utils.py`만, 저장 형식이 바뀌면 `QuizGame`의 저장·불러오기 메서드와 `Quiz.to_dict()` / `from_dict()`만 고치면 됩니다. 게임 진행 메서드(`play_quiz()` 등)는 두 경우 모두 그대로입니다.
+
+### state.json 읽기·저장 흐름
+
+- **읽기**: 파일이 있는지 확인 → `json.load()`로 읽기 → `apply_state()`에서 구조와 값 검증 → 검증을 **모두 통과한 뒤에** 속성에 한꺼번에 반영. 검증에 실패하면 손상된 파일을 `state.json.bak`으로 옮기고 기본 퀴즈로 복구합니다.
+- **저장**: `state.json.tmp`에 먼저 쓴 뒤 `os.replace()`로 원래 파일과 바꿔치기합니다. 저장 도중 프로그램이 꺼져도 기존 `state.json`은 깨지지 않습니다.
+- **저장 시점**: 퀴즈 추가·삭제 직후, 퀴즈 풀기가 끝난 뒤, 프로그램 종료(6번, Ctrl+C, EOF) 시.
+
+### 저장 필드를 이렇게 나눈 이유
+
+- `best_score`: 미션의 최소 스키마. 0~100점 정수입니다.
+- `best_detail`: 점수만으로는 "몇 문제 중 몇 개"였는지 알 수 없어서 따로 저장합니다. 점수가 같을 때 더 많은 문제를 푼 기록을 우선하는 비교에도 씁니다.
+- `history`: 보너스 과제(모든 게임 기록). 하나뿐인 최고 기록과 달리 계속 쌓이는 목록이라 별도 키로 분리했습니다.
+- `hint`: 없을 수도 있는 값이라 빈 문자열을 기본값으로 두었습니다. 힌트 없이 저장된 예전 데이터도 그대로 읽힙니다.
+
+### JSON을 선택한 이유와 한계
+
+| 장점 | 한계 |
+| --- | --- |
+| 텍스트 파일이라 사람이 열어서 읽고 고칠 수 있음 | 저장할 때마다 **파일 전체를 다시 씀** → 데이터가 커질수록 저장이 느려짐 |
+| Python의 dict / list와 그대로 대응 (`json.load` / `json.dump`) | 불러올 때 **전체를 메모리에 올림** → 수십만 건이면 시작이 느려지고 메모리 부담이 커짐 |
+| 표준 라이브러리만으로 처리, UTF-8로 한글 그대로 저장 | 일부만 읽거나 고치는 기능이 없음 (검색·수정도 항상 전체를 읽고 씀) |
+| 이 프로그램 규모(퀴즈 수십 개, 기록 수백 건)에서는 충분히 빠름 | 트랜잭션과 동시 쓰기 제어가 없음 (두 프로그램이 동시에 쓰면 한쪽 변경이 사라짐). 임시 파일 교체로는 "쓰다가 깨지는 것"만 막음 |
+| | `history`는 플레이할 때마다 늘어나서 파일이 계속 커짐 |
+
+데이터가 커지면 다음과 같이 바꾸는 것을 고려합니다.
+
+- 퀴즈·기록이 수만 건 이상: 표준 라이브러리 `sqlite3`(SQLite 데이터베이스)로 옮겨 필요한 행만 읽고 쓰기
+- 기록만 많아지는 경우: `history`를 한 줄에 기록 하나씩 쓰는 JSON Lines 파일로 분리해 **끝에 덧붙이기만** 하거나, 최근 N건만 보관하기
+
+### 요구사항이 바뀔 때 수정할 곳
+
+| 변경 내용 | 수정할 파일 · 메서드 / 상수 |
+| --- | --- |
+| 선택지 개수 (4개 → 5개) | `quiz.py`의 `Quiz.CHOICE_COUNT` (입력 범위와 검증은 이 값을 따라감). 기존 `state.json`의 4지선다 퀴즈는 형식 오류로 처리되므로 변환이 필요 |
+| 퀴즈에 새 항목 추가 (예: 난이도) | `quiz.py`의 `__init__`, `display`, `to_dict`, `from_dict` / `quiz_game.py`의 `add_quiz` / README 스키마 |
+| 점수 계산, 힌트 감점 비율 | `quiz_game.py`의 `HINT_CREDIT`, `calculate_score`, `play_quiz` |
+| 최고 점수 비교 규칙 | `quiz_game.py`의 `update_best_score` |
+| 출제 방식 (랜덤 끄기, 문제 수 고정) | `quiz_game.py`의 `play_quiz`(`random.sample`), `ask_question_count` |
+| 메뉴 추가, 순서 변경 | `quiz_game.py`의 `MENU_ITEMS`, `handle_choice`, 새 메서드 |
+| 입력 규칙, 안내 문구 | `input_utils.py`의 `parse_int`, `ask_text`, `ask_yes_no` |
+| 저장 위치, 파일 형식 | `quiz_game.py`의 `STATE_PATH`, `load_state`, `apply_state`, `save_state`, `to_state_dict` |
+| 기본 퀴즈 주제, 개수 | `default_quizzes.py`의 `get_default_quizzes` |
+| 기록 표시 개수 | `quiz_game.py`의 `RECENT_HISTORY_COUNT`, `show_score` |
+
 ## 개발 환경
 
 | 항목 | 내용 |
