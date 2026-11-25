@@ -255,8 +255,34 @@ Ctrl+C를 누르면 아래처럼 안내하고 종료합니다. 입력이 끊긴 
 
 ## Git 작업 기록
 
-- 기능 단위로 커밋 (`Feat:` 기능 추가, `Refactor:` 구조 정리, `Docs:` 문서)
-- 퀴즈 풀기 기능은 `feature/play-quiz` 브랜치에서 개발한 뒤 `main`에 병합 (`git merge --no-ff`)
+### 커밋 메시지 규칙
+
+`종류: 한 일 (필요하면 괄호 안에 세부 내용)` 형식으로 쓰고, 커밋 하나에는 기능 하나만 담았습니다.
+
+| 종류 | 쓰는 경우 |
+| --- | --- |
+| `Feat` | 새 기능 추가 |
+| `Fix` | 버그 수정 |
+| `Refactor` | 동작은 그대로 두고 구조만 정리 |
+| `Docs` | README 등 문서 |
+| `Chore` | 설정 파일 등 기능과 무관한 작업 |
+
+- 종류는 영어로 첫 글자만 대문자, 한 일은 한국어로 "~ 구현", "~ 추가"처럼 적습니다.
+- 이 저장소의 실제 예시
+  - `Feat: 퀴즈 추가 기능 구현 (빈 입력·중복 선택지·정답 범위 검사)`
+  - `Refactor: 입력 처리 함수를 input_utils.py로 분리하고 QuizGame 메서드를 역할별로 정리`
+  - `Docs: README 작성 (개요, 주제 선정 이유, 실행 방법, 기능, 파일 구조, state.json 스키마)`
+
+### 브랜치와 병합
+
+- 퀴즈 풀기 기능은 `feature/play-quiz` 브랜치에서 개발한 뒤 `main`에 병합했습니다 (`git merge --no-ff`).
+  - 기능 하나를 main과 분리해 만들면, 작업 중에도 main은 항상 실행되는 상태로 남습니다.
+  - `--no-ff`를 쓰면 main이 그대로 앞으로 당겨지는(fast-forward) 대신 병합 커밋이 남아, 기능 단위로 작업한 흔적이 그래프에 보입니다.
+- 이번 병합은 브랜치에서 작업하는 동안 main에 다른 변경이 없어 충돌 없이 끝났습니다. 충돌이 나면 다음 순서로 처리합니다.
+  1. `git status`로 충돌난 파일을 확인
+  2. 파일 안의 `<<<<<<<`, `=======`, `>>>>>>>` 표시 사이에서 남길 코드를 골라 정리하고 표시 줄은 지움
+  3. `python main.py`로 동작 확인
+  4. `git add <파일>` → `git commit`으로 병합 완료 (병합을 취소하려면 `git merge --abort`)
 - 커밋 이력 확인: `git log --oneline --graph`
 
 ![git log --oneline --graph](docs/screenshots/git_log_graph.png)
@@ -270,4 +296,9 @@ Ctrl+C를 누르면 아래처럼 안내하고 종료합니다. 입력이 끊긴 
 - 실습 완료: 이 줄은 복제한 폴더(`quiz-game-clone`)에서 추가해 push했고, 원래 작업 폴더에서 `git pull`로 받았습니다.
 
 ![clone과 pull 실행 결과](docs/screenshots/clone_pull.png)
+
+위 화면에서 확인할 부분
+- ① 복제한 폴더의 `git reflog` 첫 줄: `clone: from https://github.com/felix203/E1-2.git`
+- ② 복제한 폴더에서 만든 커밋 `ea5ba64` (README.md 1개 파일 변경)를 `git push`
+- ③ 원래 폴더의 `git pull` 결과 `Fast-forward`, `git reflog`의 `pull: Fast-forward`
 
